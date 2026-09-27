@@ -1,37 +1,29 @@
 @echo off
-
-title Kiteelegence Builder
+title Building Kittelligence
 
 echo.
-echo ==============================
-echo       KITEELEGENCE BUILD
-echo ==============================
+echo ================================
+echo       KITELLIGENCE BUILDER
+echo ================================
 echo.
 
-if not exist .venv (
-    python -m venv .venv
-)
-
-call .venv\Scripts\activate.bat
+call .venv\Scripts\activate
 
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+python -m pip install pyinstaller
 
-if exist build (
-    rmdir /s /q build
-)
+echo.
+echo Cleaning old builds...
 
-if exist dist (
-    rmdir /s /q dist
-)
+rmdir /s /q build 2>nul
+rmdir /s /q dist 2>nul
+del /q Kiteelegence.spec 2>nul
 
-if exist Kiteelegence.spec (
-    del /q Kiteelegence.spec
-)
+echo.
+echo Building Kittelligence...
 
 pyinstaller ^
-    --noconfirm ^
-    --clean ^
     --onedir ^
     --windowed ^
     --name Kiteelegence ^
@@ -40,11 +32,12 @@ pyinstaller ^
     main.py
 
 echo.
-echo ==============================
-echo BUILD FINISHED
-echo ==============================
+echo ================================
+echo        BUILD COMPLETE
+echo ================================
 echo.
-echo dist\Kiteelegence\Kiteelegence.exe
+echo Output:
+echo dist\Kiteelegence\
 echo.
 
 pause

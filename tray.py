@@ -5,100 +5,80 @@ from PIL import Image
 
 
 class TrayController:
-    def __init__(
-        self,
-        pet,
-        console,
-        brain,
-        shutdown
-    ):
+    def __init__(self, pet, console, brain, shutdown):
         self.pet = pet
         self.console = console
         self.brain = brain
         self.shutdown_callback = shutdown
 
-        image = Image.new(
-            "RGBA",
-            (64, 64),
-            (0, 0, 0, 0)
-        )
+        self.icon = None
+        self.thread = None
 
-        self.icon = pystray.Icon(
-            "Kiteelegence",
-            image,
-            "Kiteelegence",
-            menu=pystray.Menu(
-                pystray.MenuItem(
-                    "Show KitKat",
-                    self.show
-                ),
-                pystray.MenuItem(
-                    "Hide KitKat",
-                    self.hide
-                ),
-                pystray.MenuItem(
-                    "Control Center",
-                    self.open_console
-                ),
-                pystray.MenuItem(
-                    "Pause AI",
-                    self.pause
-                ),
-                pystray.MenuItem(
-                    "Resume AI",
-                    self.resume
-                ),
-                pystray.MenuItem(
-                    "Exit Kiteelegence",
-                    self.exit
-                )
+    def _create_image(self):
+        try:
+            return Image.open(
+                "assets/idle/kitkat.png"
+            ).convert("RGBA")
+        except Exception:
+            return Image.new(
+                "RGBA",
+                (64, 64),
+                (0, 0, 0, 0)
+            )
+
+    def _show_kitkat(self, icon=None, item=None):
+        self.pet.show()
+
+    def _hide_kitkat(self, icon=None, item=None):
+        self.pet.hide()
+
+    def _open_console(self, icon=None, item=None):
+        self.console.show()
+
+    def _exit(self, icon=None, item=None):
+        self.shutdown_callback()
+
+    def start(self):
+        menu = pystray.Menu(
+            pystray.MenuItem(
+                "🐱 Show KitKat",
+                self._show_kitkat
+            ),
+            pystray.MenuItem(
+                "👻 Hide KitKat",
+                self._hide_kitkat
+            ),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem(
+                "⚙ Control Center",
+                self._open_console
+            ),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem(
+                "❌ Exit Kittelligence",
+                self._exit
             )
         )
 
-    def start(self):
-        threading.Thread(
+        self.icon = pystray.Icon(
+            "Kittelligence",
+            self._create_image(),
+            "Kittelligence",
+            menu
+        )
+
+        self.thread = threading.Thread(
             target=self.icon.run,
             daemon=True
-        ).start()
-
-    def show(self):
-        self.pet.root.after(
-            0,
-            self.pet.show
         )
 
-    def hide(self):
-        self.pet.root.after(
-            0,
-            self.pet.hide
-        )
-
-    def open_console(self):
-        self.pet.root.after(
-            0,
-            self.console.show
-        )
-
-    def pause(self):
-        self.pet.root.after(
-            0,
-            self.pet.pause
-        )
-
-    def resume(self):
-        self.pet.root.after(
-            0,
-            self.pet.resume
-        )
-
-    def exit(self):
-        self.pet.root.after(
-            0,
-            self.shutdown_callback
-        )
+        self.thread.start()
 
     def stop(self):
-        try:
-            self.icon.stop()
-        except Exception:
-            pass
+        if self.icon:
+            try:
+                self.icon.stop()
+            except Exception:
+                pass
+
+            self.icon = None

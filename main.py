@@ -12,28 +12,25 @@ class Kittelligence:
         self.root = tk.Tk()
         self.root.withdraw()
 
-        # Core systems
+        self.shutting_down = False
+
         self.pet = KitKat(self.root)
         self.brain = KiteelegenceBrain(self.pet)
 
-        # Control Center
         self.console = ControlCenter(
             self.pet,
             self.brain
         )
 
-        # Right-click menu
         self.menu = CatMenu(
             self.pet,
             self.brain,
             self.console
         )
 
-        # Connect everything
         self.pet.set_menu(self.menu)
         self.pet.set_console(self.console)
 
-        # System tray
         self.tray = TrayController(
             self.pet,
             self.console,
@@ -44,27 +41,46 @@ class Kittelligence:
         self.tray.start()
         self.brain.start()
 
+        # If someone tries to close the Tk root.
+        self.root.protocol("WM_DELETE_WINDOW", self.shutdown)
+
     def run(self):
         self.root.mainloop()
 
     def shutdown(self):
+        if self.shutting_down:
+            return
+
+        self.shutting_down = True
+
+        print("[Kittelligence] Shutting down...")
+
+        # Stop the AI first.
         try:
             self.brain.stop()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Kittelligence] Brain shutdown error: {e}")
 
+        # Stop the tray icon.
         try:
             self.tray.stop()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Kittelligence] Tray shutdown error: {e}")
 
+        # Destroy KitKat.
         try:
             self.pet.destroy()
+        except Exception as e:
+            print(f"[Kittelligence] Pet shutdown error: {e}")
+
+        # Close Tkinter.
+        try:
+            self.root.quit()
         except Exception:
             pass
 
         try:
-            self.root.quit()
+            self.root.destroy()
         except Exception:
             pass
 
