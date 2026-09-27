@@ -13,6 +13,23 @@ from PIL import Image, ImageTk
 ROOT = Path(__file__).resolve().parent
 
 
+# ============================================================
+# WINDOWS DPI
+# ============================================================
+
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)
+except Exception:
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
+
+# ============================================================
+# ASSETS
+# ============================================================
+
 ANIMATION_FOLDERS = {
     "idle": ROOT / "assets" / "idle",
     "walk": ROOT / "assets" / "walk",
@@ -32,6 +49,17 @@ SOUND_FOLDERS = {
 FALLBACK_MEOW = ROOT / "sounds" / "meow.wav"
 
 
+# ============================================================
+# SPRITE SETTINGS
+# ============================================================
+
+# Set this to True if your original walk/chase sprite
+# naturally faces LEFT.
+#
+# Set it to False if the original sprite naturally faces RIGHT.
+SPRITE_FACES_LEFT = True
+
+
 class KitKat:
 
     WINDOW_SIZE = 180
@@ -49,7 +77,6 @@ class KitKat:
         self.window.overrideredirect(True)
         self.window.attributes("-topmost", True)
 
-        # This color becomes transparent on Windows.
         self.transparent_color = "#ff00ff"
 
         self.window.configure(
@@ -91,12 +118,13 @@ class KitKat:
         self.visible = True
         self.locked = False
         self.paused = False
+
         self.stationary_action = None
+
         self.confined = False
 
         self.current_animation = "idle"
         self.animation_index = 0
-
         self.animation_speed = 120
 
         self.x = 500.0
@@ -113,6 +141,19 @@ class KitKat:
         self.chasing_cursor = False
 
         self.interaction_count = 0
+
+        # =====================================================
+        # AUTONOMY
+        # =====================================================
+
+        self.auto_wander = True
+
+        self.wander_delay_min = 1500
+        self.wander_delay_max = 5000
+
+        self.next_wander_id = None
+
+        self.last_move_time = 0
 
         # =====================================================
         # CONFINE BOX
@@ -136,11 +177,10 @@ class KitKat:
         # ANIMATIONS
         # =====================================================
 
-        # Stores PIL images.
         self.animation_images = {}
-
-        # Stores PhotoImage objects.
         self.animation_photos = {}
+
+        self.current_photo = None
 
         self._load_animations()
 
@@ -177,6 +217,8 @@ class KitKat:
         # POSITION
         # =====================================================
 
+        self._center_on_virtual_screen()
+
         self._apply_boundaries()
 
         self._move_window()
@@ -194,8 +236,61 @@ class KitKat:
             "[KitKat] Animations:",
             {
                 name: len(frames)
-                for name, frames in self.animation_images.items()
+                for name, frames
+                in self.animation_images.items()
             }
+        )
+
+    # =========================================================
+    # VIRTUAL SCREEN / MULTI-MONITOR
+    # =========================================================
+
+    def get_virtual_screen(self):
+
+        user32 = ctypes.windll.user32
+
+        SM_XVIRTUALSCREEN = 76
+        SM_YVIRTUALSCREEN = 77
+        SM_CXVIRTUALSCREEN = 78
+        SM_CYVIRTUALSCREEN = 79
+
+        x = user32.GetSystemMetrics(
+            SM_XVIRTUALSCREEN
+        )
+
+        y = user32.GetSystemMetrics(
+            SM_YVIRTUALSCREEN
+        )
+
+        width = user32.GetSystemMetrics(
+            SM_CXVIRTUALSCREEN
+        )
+
+        height = user32.GetSystemMetrics(
+            SM_CYVIRTUALSCREEN
+        )
+
+        return (
+            x,
+            y,
+            width,
+            height
+        )
+
+    def _center_on_virtual_screen(self):
+
+        x, y, width, height = (
+            self.get_virtual_screen()
+        )
+
+        self.x = (
+            x
+            + (width - self.WINDOW_SIZE) / 2
+        )
+
+        self.y = (
+            y
+            + (height - self.WINDOW_SIZE) / 2
         )
 
     # =========================================================
@@ -213,13 +308,6 @@ class KitKat:
     # =========================================================
 
     def _remove_magenta_background(self, image):
-        """
-        Remove the common bright-magenta background color.
-
-        This prevents the #ff00ff box/halo from appearing
-        around KitKat if an asset was exported with a magenta
-        background.
-        """
 
         image = image.convert("RGBA")
 
@@ -233,7 +321,6 @@ class KitKat:
 
                 r, g, b, a = pixels[px, py]
 
-                # Strong magenta / purple background.
                 if (
                     r >= 220
                     and b >= 220
@@ -289,12 +376,12 @@ class KitKat:
                         file
                     ).convert("RGBA")
 
-                    # Remove accidental magenta background.
-                    image = self._remove_magenta_background(
-                        image
+                    image = (
+                        self._remove_magenta_background(
+                            image
+                        )
                     )
 
-                    # Resize while preserving aspect ratio.
                     max_size = 170
 
                     width, height = image.size
@@ -344,7 +431,6 @@ class KitKat:
 
         if not frames:
 
-            # Missing animation → idle.
             if name != "idle":
 
                 idle = self.animation_images.get(
@@ -367,7 +453,7 @@ class KitKat:
             self.animation_index = 0
 
     # =========================================================
-    # GET CURRENT FRAME
+    # CURRENT FRAME
     # =========================================================
 
     def _get_current_frame(self):
@@ -395,11 +481,27 @@ class KitKat:
             self.animation_index
         ]
 
-        # Only flip movement animations.
-        if (
-            self.facing_right
-            and self.current_animation in {"walk", "chase"}
-        ):
+        # =====================================================
+        # DIRECTION
+        # =====================================================
+
+        should_flip = False
+
+        if self.current_animation in {
+            "walk",
+            "chase"
+        }:
+
+            if SPRITE_FACES_LEFT:
+
+                should_flip = self.facing_right
+
+            else:
+
+                should_flip = not self.facing_right
+
+        if should_flip:
+
             image = image.transpose(
                 Image.Transpose.FLIP_LEFT_RIGHT
             )
@@ -425,7 +527,6 @@ class KitKat:
                     frame
                 )
 
-                # Keep a reference alive.
                 self.current_photo = photo
 
                 self.canvas.delete(
@@ -470,6 +571,8 @@ class KitKat:
         if self.locked or self.paused:
             return
 
+        self.stationary_action = None
+
         self.chasing_cursor = False
 
         self.random_destination()
@@ -483,27 +586,25 @@ class KitKat:
         if self.locked or self.paused:
             return
 
-        screen_width = (
-            self.root.winfo_screenwidth()
-        )
-
-        screen_height = (
-            self.root.winfo_screenheight()
+        screen_x, screen_y, screen_width, screen_height = (
+            self.get_virtual_screen()
         )
 
         margin = 50
 
-        min_x = margin
-        min_y = margin
+        min_x = screen_x + margin
+        min_y = screen_y + margin
 
         max_x = (
-            screen_width
+            screen_x
+            + screen_width
             - self.WINDOW_SIZE
             - margin
         )
 
         max_y = (
-            screen_height
+            screen_y
+            + screen_height
             - self.WINDOW_SIZE
             - margin
         )
@@ -557,10 +658,6 @@ class KitKat:
 
         if self.destroyed:
             return
-
-        # =====================================================
-        # PAUSED / LOCKED / HIDDEN
-        # =====================================================
 
         if (
             not self.visible
@@ -661,32 +758,44 @@ class KitKat:
 
                 if self.chasing_cursor:
 
-                    # Stay in chase mode so cursor tracking
-                    # continues even when KitKat catches it.
-
                     self._set_animation(
                         "chase"
                     )
 
                 else:
 
-                    # Random destination reached.
                     self.target_x = None
                     self.target_y = None
 
-                    self._set_animation(
-                        "idle"
-                    )
+                    if self.stationary_action:
+
+                        self._set_animation(
+                            self.stationary_action
+                        )
+
+                    else:
+
+                        self._set_animation(
+                            "idle"
+                        )
+
+                    # Random autonomous wandering.
+                    if self.auto_wander:
+
+                        self._schedule_wander()
 
         else:
 
             if not self.chasing_cursor:
 
                 if self.stationary_action:
+
                     self._set_animation(
                         self.stationary_action
                     )
+
                 else:
+
                     self._set_animation(
                         "idle"
                     )
@@ -695,6 +804,75 @@ class KitKat:
             30,
             self._movement_loop
         )
+
+    # =========================================================
+    # AUTONOMOUS WANDER
+    # =========================================================
+
+    def _schedule_wander(self):
+
+        if self.destroyed:
+            return
+
+        if self.locked or self.paused:
+            return
+
+        if self.confined and not self.visible:
+            return
+
+        if self.next_wander_id is not None:
+            return
+
+        delay = random.randint(
+            self.wander_delay_min,
+            self.wander_delay_max
+        )
+
+        self.next_wander_id = self.root.after(
+            delay,
+            self._autonomous_wander
+        )
+
+    def _autonomous_wander(self):
+
+        self.next_wander_id = None
+
+        if self.destroyed:
+            return
+
+        if self.locked or self.paused:
+            return
+
+        if self.chasing_cursor:
+            return
+
+        if self.stationary_action:
+            return
+
+        self.random_destination()
+
+    def enable_auto_wander(self):
+
+        self.auto_wander = True
+
+        self._schedule_wander()
+
+    def disable_auto_wander(self):
+
+        self.auto_wander = False
+
+        if self.next_wander_id is not None:
+
+            try:
+
+                self.root.after_cancel(
+                    self.next_wander_id
+                )
+
+            except Exception:
+                pass
+
+            self.next_wander_id = None
 
     # =========================================================
     # CURSOR CHASE
@@ -707,6 +885,8 @@ class KitKat:
 
         if self.paused:
             return
+
+        self.stationary_action = None
 
         self.chasing_cursor = True
 
@@ -749,11 +929,9 @@ class KitKat:
 
         dx = self.target_x - self.x
 
-        # Ignore tiny movements.
         if abs(dx) < 1:
             return
 
-        # KitKat's default sprite faces RIGHT.
         self.facing_right = dx > 0
 
     # =========================================================
@@ -762,12 +940,8 @@ class KitKat:
 
     def _apply_boundaries(self):
 
-        screen_width = (
-            self.root.winfo_screenwidth()
-        )
-
-        screen_height = (
-            self.root.winfo_screenheight()
+        screen_x, screen_y, screen_width, screen_height = (
+            self.get_virtual_screen()
         )
 
         if self.confined:
@@ -787,16 +961,18 @@ class KitKat:
 
         else:
 
-            min_x = 0
-            min_y = 0
+            min_x = screen_x
+            min_y = screen_y
 
             max_x = (
-                screen_width
+                screen_x
+                + screen_width
                 - self.WINDOW_SIZE
             )
 
             max_y = (
-                screen_height
+                screen_y
+                + screen_height
                 - self.WINDOW_SIZE
             )
 
@@ -867,11 +1043,8 @@ class KitKat:
     def toggle_visibility(self):
 
         if self.visible:
-
             self.hide()
-
         else:
-
             self.show()
 
     # =========================================================
@@ -898,11 +1071,8 @@ class KitKat:
     def toggle_lock(self):
 
         if self.locked:
-
             self.unlock()
-
         else:
-
             self.lock()
 
     # =========================================================
@@ -929,11 +1099,8 @@ class KitKat:
     def toggle_pause(self):
 
         if self.paused:
-
             self.resume()
-
         else:
-
             self.pause()
 
     # =========================================================
@@ -977,10 +1144,12 @@ class KitKat:
 
         self.confined = True
 
-        self._apply_boundaries()
+        self.chasing_cursor = False
 
         self.target_x = None
         self.target_y = None
+
+        self._apply_boundaries()
 
         self._move_window()
 
@@ -998,12 +1167,15 @@ class KitKat:
             return
 
         self.chasing_cursor = False
+
         self.target_x = None
         self.target_y = None
 
         self.stationary_action = "sit"
 
-        self._set_animation("sit")
+        self._set_animation(
+            "sit"
+        )
 
     def sleep(self):
 
@@ -1011,18 +1183,25 @@ class KitKat:
             return
 
         self.chasing_cursor = False
+
         self.target_x = None
         self.target_y = None
 
         self.stationary_action = "sleep"
 
-        self._set_animation("sleep")
+        self._set_animation(
+            "sleep"
+        )
 
     def wake(self):
 
         self.stationary_action = None
 
-        self._set_animation("idle")
+        self._set_animation(
+            "idle"
+        )
+
+        self._schedule_wander()
 
     # =========================================================
     # MEOW
@@ -1031,6 +1210,8 @@ class KitKat:
     def meow(self):
 
         self.interaction_count += 1
+
+        self.stationary_action = None
 
         self.chasing_cursor = False
 
@@ -1060,6 +1241,35 @@ class KitKat:
         self._register_interaction(
             "meow"
         )
+
+        # Return to normal behavior.
+        self.root.after(
+            900,
+            self._finish_meow
+        )
+
+    def _finish_meow(self):
+
+        if self.destroyed:
+            return
+
+        if self.current_animation != "meow":
+            return
+
+        if self.stationary_action:
+            self._set_animation(
+                self.stationary_action
+            )
+        else:
+            self._set_animation(
+                "idle"
+            )
+
+            self._schedule_wander()
+
+    # =========================================================
+    # PURR
+    # =========================================================
 
     def purr(self):
 
@@ -1091,8 +1301,7 @@ class KitKat:
         files = [
             file
             for file in folder.iterdir()
-            if file.suffix.lower()
-            == ".wav"
+            if file.suffix.lower() == ".wav"
         ]
 
         if not files:
@@ -1138,6 +1347,8 @@ class KitKat:
 
         self.target_x = None
         self.target_y = None
+
+        self.stationary_action = None
 
         self._set_animation(
             "idle"
@@ -1185,6 +1396,8 @@ class KitKat:
         self._register_interaction(
             "drag"
         )
+
+        self._schedule_wander()
 
     def _double_click(self, event):
 
@@ -1277,40 +1490,30 @@ class KitKat:
             ),
             "interactions": self.interaction_count,
             "facing_right": self.facing_right,
+            "auto_wander": self.auto_wander,
+            "stationary_action": self.stationary_action,
         }
 
     # =========================================================
-    # RESET
+    # RESET POSITION
     # =========================================================
 
     def reset_position(self):
 
-        screen_width = (
-            self.root.winfo_screenwidth()
-        )
-
-        screen_height = (
-            self.root.winfo_screenheight()
-        )
-
-        self.x = (
-            screen_width
-            - self.WINDOW_SIZE
-        ) / 2
-
-        self.y = (
-            screen_height
-            - self.WINDOW_SIZE
-        ) / 2
+        self._center_on_virtual_screen()
 
         self.target_x = None
         self.target_y = None
 
         self.chasing_cursor = False
 
+        self.stationary_action = None
+
         self._set_animation(
             "idle"
         )
+
+        self._apply_boundaries()
 
         self._move_window()
 
@@ -1325,8 +1528,24 @@ class KitKat:
 
         self.destroyed = True
 
+        # Cancel scheduled wandering.
+        if self.next_wander_id is not None:
+
+            try:
+
+                self.root.after_cancel(
+                    self.next_wander_id
+                )
+
+            except Exception:
+                pass
+
+            self.next_wander_id = None
+
         try:
+
             self.window.destroy()
 
         except Exception:
+
             pass

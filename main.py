@@ -5,7 +5,7 @@ from brain import KiteelegenceBrain
 from menu import CatMenu
 from console import ControlCenter
 from tray import TrayController
-
+from updater import check_for_update
 
 class Kittelligence:
     def __init__(self):
@@ -86,5 +86,8 @@ class Kittelligence:
 
 
 if __name__ == "__main__":
+
+    check_for_update()
+
     app = Kittelligence()
     app.run()
