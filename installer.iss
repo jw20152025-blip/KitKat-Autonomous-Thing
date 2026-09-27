@@ -17,23 +17,16 @@ OutputBaseFilename=KiteelegenceSetup
 
 Compression=lzma
 SolidCompression=yes
-
 WizardStyle=modern
 
 Uninstallable=yes
 
 [Files]
-Source: "dist\Kittelligence\*"; DestDir: "{app}"; \
-    Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\Kiteelegence\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Kittelligence"; \
-    Filename: "{app}\{#MyAppExeName}"
-
-Name: "{autodesktop}\Kittelligence"; \
-    Filename: "{app}\{#MyAppExeName}"
+Name: "{autoprograms}\Kittelligence"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\Kittelligence"; Filename: "{app}\{#MyAppExeName}"
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; \
-    Description: "Launch Kittelligence"; \
-    Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "Launch Kittelligence"; Flags: nowait postinstall skipifsilent
