@@ -397,11 +397,9 @@ class KitKat:
 
         # Only flip movement animations.
         if (
-            not self.facing_right
-            and self.current_animation
-            in {"walk", "chase"}
+            self.facing_right
+            and self.current_animation in {"walk", "chase"}
         ):
-
             image = image.transpose(
                 Image.Transpose.FLIP_LEFT_RIGHT
             )
@@ -684,9 +682,14 @@ class KitKat:
 
             if not self.chasing_cursor:
 
-                self._set_animation(
-                    "idle"
-                )
+                if self.stationary_action:
+                    self._set_animation(
+                        self.stationary_action
+                    )
+                else:
+                    self._set_animation(
+                        "idle"
+                    )
 
         self.root.after(
             30,
@@ -744,17 +747,14 @@ class KitKat:
         if self.target_x is None:
             return
 
-        dx = (
-            self.target_x
-            - self.x
-        )
+        dx = self.target_x - self.x
 
+        # Ignore tiny movements.
         if abs(dx) < 1:
             return
 
-        self.facing_right = (
-            dx > 0
-        )
+        # KitKat's default sprite faces RIGHT.
+        self.facing_right = dx > 0
 
     # =========================================================
     # BOUNDARIES
