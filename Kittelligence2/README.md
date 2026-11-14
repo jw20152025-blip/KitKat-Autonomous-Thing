@@ -8,7 +8,7 @@ A fresh Windows desktop companion for KitKat. The original project remains intac
 2. Open `Kittelligence2`.
 3. Double-click `launch.bat`.
 
-The launcher creates a local virtual environment, installs the two dependencies, and starts KitKat. No API key or paid service is required.
+The launcher creates a local virtual environment, installs dependencies, and starts KitKat. No API key or paid service is required.
 
 ## Features
 
