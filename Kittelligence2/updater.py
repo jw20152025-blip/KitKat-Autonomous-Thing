@@ -48,7 +48,7 @@ class UpdateManager:
                     error = "A newer release exists, but it has no Windows installer attached."
                 self.root.after(0, lambda: self._finish_check(manual, latest, installer, error))
             except Exception as exc:
-                self.root.after(0, lambda: self._finish_check(manual, "", None, f"Could not check GitHub: {exc}"))
+                error_text = str(exc)\n                self.root.after(0, lambda message=error_text: self._finish_check(manual, "", None, f"Could not check GitHub: {message}"))
         threading.Thread(target=worker, daemon=True).start()
 
     def _finish_check(self, manual, latest, installer, error):
