@@ -7,7 +7,7 @@ from PIL import Image, ImageTk
 
 
 APP_DIR = Path(__file__).resolve().parent
-ASSET_DIR = APP_DIR.parent / "assets"
+ASSET_DIR = (Path(getattr(sys, "_MEIPASS")) / "assets") if hasattr(sys, "_MEIPASS") else (APP_DIR.parent / "assets")
 
 
 class KitKatPet:
