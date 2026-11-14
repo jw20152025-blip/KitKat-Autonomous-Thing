@@ -81,4 +81,4 @@ class UpdateManager:
             subprocess.Popen([str(filename)], cwd=str(filename.parent))
             self.root.after(0, lambda: messagebox.showinfo("Kittelligence", "Installer started. Close Kittelligence when the installer asks you to."))
         except Exception as exc:
-            self.root.after(0, lambda: messagebox.showerror("Kittelligence update failed", str(exc)))
+            error_text = str(exc)\n            self.root.after(0, lambda message=error_text: messagebox.showerror("Kittelligence update failed", message))
