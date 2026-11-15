@@ -4,11 +4,38 @@ import random
 import sys
 import tkinter as tk
 from pathlib import Path
+
 from PIL import Image, ImageTk
 
-
 APP_DIR = Path(__file__).resolve().parent
-ASSET_DIR = (Path(getattr(sys, "_MEIPASS")) / "assets") if hasattr(sys, "_MEIPASS") else (APP_DIR.parent / "assets")
+BUNDLE_DIR = Path(getattr(sys, "_MEIPASS")) if hasattr(sys, "_MEIPASS") else APP_DIR.parent
+ASSET_DIR = BUNDLE_DIR / "assets"
+SOUND_DIR = BUNDLE_DIR / "sounds"
+TRANSPARENT_COLOR = "#ff00ff"
+
+
+def remove_magenta_fringe(image):
+    """Remove magenta matte pixels and unblend antialiased edges from pet artwork."""
+    image = image.convert("RGBA")
+    pixels = image.load()
+    for y in range(image.height):
+        for x in range(image.width):
+            r, g, b, alpha = pixels[x, y]
+            if alpha == 0:
+                continue
+            if r > 115 and b > 115 and g < 155 and r > g * 1.30 and b > g * 1.30:
+                chroma = min(255, max(r - g, b - g))
+                opacity = max(0.0, 1.0 - chroma / 255.0)
+                new_alpha = int(alpha * opacity)
+                if new_alpha < 10:
+                    pixels[x, y] = (0, 0, 0, 0)
+                    continue
+                if opacity > 0.04:
+                    nr = int(max(0, min(255, (r - 255 * (1 - opacity)) / opacity)))
+                    ng = int(max(0, min(255, g / opacity)))
+                    nb = int(max(0, min(255, (b - 255 * (1 - opacity)) / opacity)))
+                    pixels[x, y] = (nr, ng, nb, new_alpha)
+    return image
 
 
 class KitKatPet:
@@ -20,15 +47,14 @@ class KitKatPet:
         self.window.overrideredirect(True)
         self.window.attributes("-topmost", True)
         self.window.geometry(f"{self.SIZE}x{self.SIZE}+420+420")
-        self.window.configure(bg="#ff00ff")
-        try:
-            self.window.attributes("-transparentcolor", "#ff00ff")
-        except tk.TclError:
-            pass
-        self.canvas = tk.Canvas(self.window, width=self.SIZE, height=self.SIZE, bg="#ff00ff", highlightthickness=0)
+        self.window.configure(bg=TRANSPARENT_COLOR)
+        self.window.attributes("-transparentcolor", TRANSPARENT_COLOR)
+        self.canvas = tk.Canvas(
+            self.window, width=self.SIZE, height=self.SIZE,
+            bg=TRANSPARENT_COLOR, highlightthickness=0, bd=0
+        )
         self.canvas.pack()
         self.frames = self._load_frames()
-        self.images = []
         self.animation = "idle"
         self.frame = 0
         self.x, self.y = 420.0, 420.0
@@ -38,6 +64,7 @@ class KitKatPet:
         self.destroyed = False
         self.on_interaction = None
         self.on_menu = None
+        self._meow_serial = 0
         self.window.bind("<ButtonPress-1>", self._drag_start)
         self.window.bind("<B1-Motion>", self._drag)
         self.window.bind("<ButtonRelease-1>", self._click)
@@ -56,7 +83,7 @@ class KitKatPet:
                         try:
                             im = Image.open(path).convert("RGBA")
                             im.thumbnail((self.SIZE - 12, self.SIZE - 12), Image.Resampling.LANCZOS)
-                            frames.append(im)
+                            frames.append(remove_magenta_fringe(im))
                         except OSError:
                             continue
             result[name] = frames
@@ -65,7 +92,7 @@ class KitKatPet:
             try:
                 im = Image.open(fallback).convert("RGBA")
                 im.thumbnail((self.SIZE - 12, self.SIZE - 12), Image.Resampling.LANCZOS)
-                result["idle"] = [im]
+                result["idle"] = [remove_magenta_fringe(im)]
             except OSError:
                 pass
         return result
@@ -80,25 +107,30 @@ class KitKatPet:
         if self.destroyed:
             return
         frames = self.frames.get(self.animation) or self.frames.get("idle") or []
+        self.canvas.delete("all")
         if frames:
             self.frame %= len(frames)
             image = frames[self.frame]
             if self.animation in ("walk", "chase") and self.target and self.target[0] > self.x:
                 image = image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
             photo = ImageTk.PhotoImage(image)
-            self.canvas.delete("all")
             self.canvas.create_image(self.SIZE // 2, self.SIZE // 2, image=photo)
             self.canvas.image = photo
-
-            # If no dedicated meow animation frames were supplied, still give
-            # immediate visible feedback instead of silently showing the idle pose.
-            if self.animation == "meow" and not self.frames.get("meow"):
-                self.canvas.create_oval(105, 8, 174, 43, fill="white", outline="#444444", width=1)
-                self.canvas.create_text(139, 25, text="Meow!", fill="#222222",
-                                        font=("Segoe UI", 11, "bold"))
-
             self.frame += 1
         self.root.after(130, self._animate)
+
+    def _play_sound(self, name):
+        sound_path = SOUND_DIR / name / f"{name}.wav"
+        if not sound_path.is_file():
+            return
+        try:
+            import winsound
+            winsound.PlaySound(
+                str(sound_path),
+                winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT
+            )
+        except (ImportError, RuntimeError, OSError):
+            pass
 
     def _drag_start(self, event):
         self.drag_dx, self.drag_dy = event.x, event.y
@@ -145,8 +177,10 @@ class KitKatPet:
         if self.paused:
             return
         width, height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        self.target = (random.randint(30, max(31, width - self.SIZE - 30)),
-                       random.randint(30, max(31, height - self.SIZE - 30)))
+        self.target = (
+            random.randint(30, max(31, width - self.SIZE - 30)),
+            random.randint(30, max(31, height - self.SIZE - 30))
+        )
         self._set_animation("walk")
 
     def sleep(self):
@@ -158,8 +192,14 @@ class KitKatPet:
         self._set_animation("sit")
 
     def meow(self):
+        self._play_sound("meow")
+        self._meow_serial += 1
+        serial = self._meow_serial
         self._set_animation("meow")
-        self.root.after(1000, lambda: self._set_animation("idle"))
+        self.root.after(1000, lambda: self._set_animation("idle") if serial == self._meow_serial else None)
+
+    def purr(self):
+        self._play_sound("purr")
 
     def show(self):
         self.visible = True

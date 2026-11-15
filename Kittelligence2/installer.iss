@@ -1,6 +1,6 @@
-; Inno Setup 6 script for Kittelligence 2.0
+; Inno Setup 6 script for Kittelligence 2.1
 #define AppName "Kittelligence"
-#define AppVersion "2.0.0"
+#define AppVersion "2.1.0"
 #define AppPublisher "anyonomous studios"
 
 [Setup]
