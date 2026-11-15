@@ -89,6 +89,14 @@ class KitKatPet:
             self.canvas.delete("all")
             self.canvas.create_image(self.SIZE // 2, self.SIZE // 2, image=photo)
             self.canvas.image = photo
+
+            # If no dedicated meow animation frames were supplied, still give
+            # immediate visible feedback instead of silently showing the idle pose.
+            if self.animation == "meow" and not self.frames.get("meow"):
+                self.canvas.create_oval(105, 8, 174, 43, fill="white", outline="#444444", width=1)
+                self.canvas.create_text(139, 25, text="Meow!", fill="#222222",
+                                        font=("Segoe UI", 11, "bold"))
+
             self.frame += 1
         self.root.after(130, self._animate)
 

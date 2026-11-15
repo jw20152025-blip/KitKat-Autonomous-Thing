@@ -28,6 +28,7 @@ class ControlCenter:
         actions = ttk.LabelFrame(outer, text="Quick actions", padding=10)
         actions.pack(fill="x", pady=6)
         for label, command in [
+            ("Feed KitKat", self.brain.feed),
             ("Wander", self.pet.wander), ("Sit", self.pet.sit),
             ("Sleep", self.pet.sleep), ("Meow", self.pet.meow),
             ("Show", self.pet.show), ("Hide", self.pet.hide),

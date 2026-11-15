@@ -86,6 +86,15 @@ class AutonomousBrain:
         self.history.append({"time": time.time(), "action": action})
         self.history = self.history[-100:]
 
+    def feed(self):
+        """Give KitKat a virtual meal and immediately persist the updated state."""
+        self.hunger = self._clamp(self.hunger - 0.65)
+        self.happiness = self._clamp(self.happiness + 0.05)
+        self.last_action = "Had a meal"
+        self.history.append({"time": time.time(), "action": "feed"})
+        self.history = self.history[-100:]
+        self.store.save(self.export_state())
+
     def on_petted(self):
         self.total_pets += 1
         self.happiness = self._clamp(self.happiness + 0.10)
