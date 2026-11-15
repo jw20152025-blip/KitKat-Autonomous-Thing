@@ -21,7 +21,7 @@ The launcher creates a local virtual environment, installs dependencies, and sta
 - The assistant receives KitKat's current care stats as conversation context.
 - The assistant can open automatically when an important need becomes urgent.
 - Chat history is kept in memory for the current app session.
-- Care memory saved to %APPDATA%\\Kittelligence\\memory.json.
+- Care memory saved to %APPDATA%\Kittelligence\\memory.json.
 - GitHub Releases update checker.
 
 ## Set up KitKat AI (one-time)
@@ -48,4 +48,4 @@ The model runs locally through Ollama at 127.0.0.1:11434. Kittelligence sends th
 
 Run launch.bat once, then run build.bat. Install Inno Setup 6 to produce Kittelligence-Setup.exe. The build includes both assets and sounds so audio works in the packaged application.
 
-The installer must not delete %APPDATA%\\Kittelligence because that folder contains saved memory.
+The installer must not delete %APPDATA%\Kittelligence because that folder contains saved memory.
