@@ -1,32 +1,34 @@
-# Kittelligence 2.0
+# Kittelligence 2.1
 
-A fresh Windows desktop companion for KitKat. The original project remains intact; this version lives in its own folder and reuses the existing artwork in the repository's top-level `assets/` directory.
+A Windows desktop companion for KitKat. The original project remains intact; Kittelligence 2.1 lives in this folder and reuses the artwork and WAV sounds in the repository.
 
 ## Launch
 
-1. Install Python 3.10 or newer from https://www.python.org/downloads/ (enable **Add Python to PATH**).
-2. Open `Kittelligence2`.
-3. Double-click `launch.bat`.
+1. Install Python 3.10 or newer from https://www.python.org/downloads/ and enable Add Python to PATH.
+2. Open the Kittelligence2 folder.
+3. Double-click launch.bat.
 
-The launcher creates a local virtual environment, installs dependencies, and starts KitKat. No API key or paid service is required.
+The launcher creates a local virtual environment, installs dependencies, and starts KitKat.
 
 ## Features
 
-- Animated desktop pet using the existing `assets/idle`, `assets/walk`, `assets/sit`, `assets/sleep`, and `assets/meow` artwork folders.
-- Autonomous, explainable behaviour scheduler.
-- Drag KitKat around; right-click for the application menu.
-- Control Center with live needs and interaction count.
-- Persistent memory stored in `%APPDATA%\Kittelligence\memory.json`.
-- GitHub Releases update checker. It offers updates only when a newer release includes a Windows `.exe` installer. If GitHub provides an asset SHA-256 digest, the updater verifies it before launching the installer.
+- Animated, draggable desktop pet with a transparent background and magenta-fringe cleanup.
+- Real WAV meow playback from sounds/meow/meow.wav using Windows audio playback.
+- Purr playback from sounds/purr/purr.wav.
+- Autonomous behaviour and persistent memory.
+- Scrollable care centre with hunger, hydration, energy, happiness, boredom, and litter cleanliness.
+- Care actions: feed, water, play, nap, clean litter, brush, pet, meow, and purr.
+- A KitKat-themed local chat assistant that can answer care questions and perform care actions.
+- The assistant can open automatically when an important need becomes urgent.
+- Memory saved to %APPDATA%\Kittelligence\memory.json.
+- GitHub Releases update checker.
 
-## Publishing updates
+## Assistant
 
-Build and attach a Windows installer named something like `Kittelligence-Setup.exe` to a GitHub Release. Use a version tag such as `v2.0.1`. The updater checks the repository's latest published release.
+The assistant is an offline, intent-aware helper. It does not require an API key, paid subscription, or internet connection, and it can change KitKat's in-app care stats. It is not a general-purpose cloud language model.
 
-The installer should close/replace the application files but must not delete `%APPDATA%\Kittelligence`; that directory contains the user's memory.
+## Build a Windows installer
 
-## Notes
+Run launch.bat once, then run build.bat. Install Inno Setup 6 to produce Kittelligence-Setup.exe. The build includes both assets and sounds so audio works in the packaged application.
 
-- The first run needs internet access to install Python packages.
-- Tkinter is included with standard Windows Python installations.
-- The pet is a local desktop animation. It does not monitor or control other applications.
+The installer must not delete %APPDATA%\Kittelligence because that folder contains saved memory.
