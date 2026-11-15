@@ -153,8 +153,8 @@ class ControlCenter:
             ("Clean litter", self.brain.clean_litter),
             ("Brush", self.brain.brush),
             ("Pet", self.brain.on_petted),
-            ("Meow", self.pet.meow),
-            ("Purr", self.pet.purr),
+            ("Meow", self.brain.manual_meow),
+            ("Purr", self.brain.manual_purr),
             ("Chat with KitKat", self.show_chat),
         ]
         for index, (label, command) in enumerate(buttons):

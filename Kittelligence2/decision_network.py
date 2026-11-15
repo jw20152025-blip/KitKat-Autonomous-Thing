@@ -12,7 +12,8 @@ class DeepDecisionNetwork:
     not a language model; it learns from scored experiences rather than generating text.
     """
 
-    ACTIONS = ("wander", "sit", "sleep", "meow", "idle")
+    AUTONOMOUS_ACTIONS = ("wander", "sit", "sleep", "meow", "idle")
+    ACTIONS = AUTONOMOUS_ACTIONS + ("feed", "water", "play", "rest", "litter", "brush", "pet", "purr")
     INPUTS = 10
     WIDTHS = (128, 128, 96, 96, 64, 48)
     LEARNING_RATE = 0.0025

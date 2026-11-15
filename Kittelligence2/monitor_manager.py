@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import random
 from ctypes import wintypes
 
 
@@ -68,10 +69,9 @@ class MonitorManager:
             candidates = [(preferred, monitors[preferred])]
         else:
             candidates = list(enumerate(monitors))
-        index, rect = candidates[__import__("random").randrange(len(candidates))]
+        index, rect = candidates[random.randrange(len(candidates))]
         max_x = max(rect["left"] + margin, rect["right"] - width - margin)
         max_y = max(rect["top"] + margin, rect["bottom"] - height - margin)
-        import random
         return index, (
             random.randint(rect["left"] + margin, max_x),
             random.randint(rect["top"] + margin, max_y),
