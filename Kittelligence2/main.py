@@ -8,7 +8,7 @@ from kitkat import KitKatPet
 from storage import MemoryStore
 from updater import UpdateManager
 
-APP_VERSION = "2.2.0"
+APP_VERSION = "2.4.0"
 
 
 class KittelligenceApp:

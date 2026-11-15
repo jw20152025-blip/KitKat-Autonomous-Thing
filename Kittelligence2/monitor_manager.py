@@ -26,7 +26,7 @@ class MonitorManager:
 
                 user32 = ctypes.windll.user32
                 callback_type = ctypes.WINFUNCTYPE(
-                    wintypes.BOOL, wintypes.HMONITOR, wintypes.HDC,
+                    wintypes.BOOL, wintypes.HANDLE, wintypes.HDC,
                     ctypes.POINTER(RECT), wintypes.LPARAM
                 )
 

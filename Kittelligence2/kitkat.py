@@ -135,12 +135,14 @@ class KitKatPet:
             pass
 
     def _drag_start(self, event):
-        self._dragging = True
+        self._dragging = False
         self.drag_dx, self.drag_dy = event.x, event.y
         self.target = None
         self._set_animation("idle")
 
     def _drag(self, event):
+        if abs(event.x - self.drag_dx) > 3 or abs(event.y - self.drag_dy) > 3:
+            self._dragging = True
         self.x = self.window.winfo_x() + event.x - self.drag_dx
         self.y = self.window.winfo_y() + event.y - self.drag_dy
         self._place()

@@ -14,7 +14,7 @@ class DeepDecisionNetwork:
 
     ACTIONS = ("wander", "sit", "sleep", "meow", "idle")
     INPUTS = 10
-    WIDTHS = (48, 48, 40, 32, 24, 16)
+    WIDTHS = (128, 128, 96, 96, 64, 48)
     LEARNING_RATE = 0.0025
 
     def __init__(self, saved=None):

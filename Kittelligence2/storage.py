@@ -14,12 +14,9 @@ class MemoryStore:
 
     def load(self):
         defaults = {
-            "personality": {"curiosity": 0.82, "playfulness": 0.72,
-                            "laziness": 0.48, "affection": 0.78},
-            "energy": 0.82, "happiness": 0.78, "boredom": 0.12,
-            "hunger": 0.08, "hydration": 0.82, "litter_cleanliness": 0.92,
-            "total_pets": 0, "actions": [], "notes": [],
-            "last_satisfaction": 50.0, "decision_network": None,
+            "personality": {"curiosity": 0.82, "playfulness": 0.72, "laziness": 0.48, "affection": 0.78},
+            "energy": 0.82, "happiness": 0.78, "boredom": 0.12, "hunger": 0.08,
+            "total_pets": 0, "actions": [], "notes": []
         }
         try:
             if self.path.exists():
