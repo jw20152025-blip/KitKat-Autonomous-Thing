@@ -200,7 +200,7 @@ class ControlCenter:
         self.chat_entry.delete(0, "end")
         self._append_chat("You", message)
         self.chat_history.append({"role": "user", "content": message})
-        self.chat_history = self.chat_history[-16:]
+        self._trim_chat_history()
         self.chat_pending = True
         self.chat_entry.configure(state="disabled")
         self.send_button.configure(state="disabled", text="Thinking…")
@@ -238,8 +238,12 @@ class ControlCenter:
         if not answer:
             answer = "Mrrp… I didn't get a response that time. Could you try again?"
         self.chat_history.append({"role": "assistant", "content": answer})
-        self.chat_history = self.chat_history[-16:]
+        self._trim_chat_history()
         self._append_chat("KitKat", answer)
+
+    def _trim_chat_history(self):
+        while len(self.chat_history) > 16:
+            del self.chat_history[:2]
 
     def notify_need(self, message):
         self.show_chat()
