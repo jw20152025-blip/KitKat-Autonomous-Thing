@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import threading
 import tkinter as tk
 from tkinter import ttk, scrolledtext
+
+from assistant import KitKatAI
 
 
 class ControlCenter:
@@ -13,7 +16,11 @@ class ControlCenter:
         self.chat_window = None
         self.chat_log = None
         self.chat_entry = None
+        self.send_button = None
         self.greeted = False
+        self.chat_pending = False
+        self.chat_history = []
+        self.ai = KitKatAI()
 
     def show(self):
         if self.window and self.window.winfo_exists():
@@ -128,14 +135,14 @@ class ControlCenter:
             self.chat_window.lift()
             return
         self.chat_window = tk.Toplevel(self.root)
-        self.chat_window.title("KitKat Assistant")
-        self.chat_window.geometry("430x520")
-        self.chat_window.minsize(340, 380)
+        self.chat_window.title("KitKat AI")
+        self.chat_window.geometry("450x540")
+        self.chat_window.minsize(350, 400)
         self.chat_window.protocol("WM_DELETE_WINDOW", self.chat_window.withdraw)
         frame = ttk.Frame(self.chat_window, padding=12)
         frame.pack(fill="both", expand=True)
-        ttk.Label(frame, text="KitKat Assistant", font=("Segoe UI", 17, "bold")).pack(anchor="w")
-        ttk.Label(frame, text="A little local assistant for KitKat's care").pack(anchor="w", pady=(0, 8))
+        ttk.Label(frame, text="KitKat AI", font=("Segoe UI", 17, "bold")).pack(anchor="w")
+        ttk.Label(frame, text="Powered by a local language model").pack(anchor="w", pady=(0, 8))
         self.chat_log = scrolledtext.ScrolledText(
             frame, wrap="word", height=16, state="disabled",
             font=("Segoe UI", 10), padx=8, pady=8
@@ -146,9 +153,10 @@ class ControlCenter:
         self.chat_entry = ttk.Entry(bottom)
         self.chat_entry.pack(side="left", fill="x", expand=True)
         self.chat_entry.bind("<Return>", lambda _e: self.send_chat())
-        ttk.Button(bottom, text="Send", command=self.send_chat).pack(side="right", padx=(6, 0))
+        self.send_button = ttk.Button(bottom, text="Send", command=self.send_chat)
+        self.send_button.pack(side="right", padx=(6, 0))
         if not self.greeted:
-            self._append_chat("KitKat", "Mrrp! I'm your KitKat care assistant. Ask how I'm doing, or tell me to feed, water, play with, brush, or help me nap.")
+            self._append_chat("KitKat", "Mrrp! I'm here. What's on your mind?")
             self.greeted = True
         self.chat_entry.focus_set()
 
@@ -160,74 +168,78 @@ class ControlCenter:
         self.chat_log.configure(state="disabled")
         self.chat_log.see("end")
 
+    def _system_context(self):
+        b = self.brain
+        return (
+            "You are KitKat, a friendly, curious virtual British Shorthair cat companion "
+            "inside the Kittelligence desktop app. Speak naturally as KitKat, with a warm "
+            "cat-like personality, but be genuinely useful: answer open-ended questions, "
+            "explain things, brainstorm, and have normal conversations. Do not claim to be "
+            "the user's real cat or claim to have senses or experiences outside this app. "
+            "You can use the care information below to give relevant advice. Never claim "
+            "you performed a care action; the user must use the care buttons to do that. "
+            "Keep most replies concise, but explain more when asked. If you do not know "
+            "something, say so rather than inventing facts.\n\n"
+            "CURRENT KITKAT APP STATE (values are 0-100%):\n"
+            f"Hunger: {b.hunger:.0%}\n"
+            f"Hydration: {b.hydration:.0%}\n"
+            f"Energy: {b.energy:.0%}\n"
+            f"Happiness: {b.happiness:.0%}\n"
+            f"Boredom: {b.boredom:.0%}\n"
+            f"Litter cleanliness: {b.litter_cleanliness:.0%}\n"
+            f"Last activity: {b.last_action}\n"
+            f"Total pets: {b.total_pets}\n"
+        )
+
     def send_chat(self):
-        if not self.chat_entry:
+        if not self.chat_entry or self.chat_pending:
             return
         message = self.chat_entry.get().strip()
         if not message:
             return
         self.chat_entry.delete(0, "end")
         self._append_chat("You", message)
-        self._append_chat("KitKat", self._respond(message))
+        self.chat_history.append({"role": "user", "content": message})
+        self.chat_history = self.chat_history[-16:]
+        self.chat_pending = True
+        self.chat_entry.configure(state="disabled")
+        self.send_button.configure(state="disabled", text="Thinking…")
+        messages = [{"role": "system", "content": self._system_context()}] + list(self.chat_history)
 
-    def _status_summary(self):
-        b = self.brain
-        return (
-            f"I'm at {b.happiness:.0%} happiness, {b.energy:.0%} energy, "
-            f"{b.hunger:.0%} hunger, {b.hydration:.0%} hydration, "
-            f"{b.boredom:.0%} boredom, and {b.litter_cleanliness:.0%} litter cleanliness. "
-            f"My last activity was: {b.last_action.lower()}."
-        )
+        def worker():
+            try:
+                answer = self.ai.chat(messages)
+                error = None
+            except Exception as exc:
+                answer = None
+                error = str(exc)
+            try:
+                self.root.after(0, lambda: self._finish_chat(answer, error))
+            except tk.TclError:
+                pass
 
-    def _respond(self, message):
-        text = message.lower()
-        b = self.brain
-        if any(word in text for word in ("feed", "food", "hungry", "meal")):
-            b.feed()
-            return "Yum! Thanks for feeding me. My hunger has gone down."
-        if any(word in text for word in ("water", "thirst", "drink", "bowl")):
-            b.give_water()
-            return "Glug glug. My water bowl is topped up!"
-        if any(word in text for word in ("play", "toy", "bored")):
-            b.play()
-            return "Let's play! That helped with my boredom. I might need a nap after all that excitement."
-        if any(word in text for word in ("sleep", "nap", "tired", "rest")):
-            b.rest()
-            return "Nap time. I'll rest and build my energy back up."
-        if any(word in text for word in ("litter", "clean up", "clean my")):
-            b.clean_litter()
-            return "Thank you! My litter area is clean again."
-        if any(word in text for word in ("brush", "groom")):
-            b.brush()
-            return "That was lovely. My coat appreciates it!"
-        if any(word in text for word in ("pet me", "pet you", "pat you", "stroke")):
-            b.on_petted()
-            return "Prrrr. I like spending time with you."
-        if "meow" in text:
-            self.pet.meow()
-            return "Meeeow!"
-        if "purr" in text:
-            self.pet.purr()
-            return "Prrrrrrrr."
-        if any(word in text for word in ("status", "stats", "how are you", "how am i", "doing")):
-            return self._status_summary()
-        if any(word in text for word in ("what should", "what do i", "need", "help", "care")):
-            options = [
-                (b.hunger, "food", "I'm getting hungry. The Feed button will help."),
-                (1 - b.hydration, "water", "I'm getting thirsty. Please give me water."),
-                (1 - b.energy, "rest", "I'm low on energy. A nap would be great."),
-                (b.boredom, "play", "I'm getting bored. Let's play!"),
-                (1 - b.litter_cleanliness, "litter", "My litter area could use a clean."),
-            ]
-            score, _key, advice = max(options, key=lambda item: item[0])
-            if score < 0.25:
-                return "I'm doing pretty well right now! You can pet me or play with me if you'd like."
-            return advice
-        if any(word in text for word in ("hello", "hi", "hey")):
-            return "Mrrp! Hello! What's happening?"
-        if any(word in text for word in ("thank", "thanks")):
-            return "You're welcome! Being looked after is pretty great."
-        return "Mrrp! I can help with feeding, water, playtime, naps, brushing, litter care, meows, and my current stats. What should we do?"
+        threading.Thread(target=worker, daemon=True, name="KitKatAIRequest").start()
+
+    def _finish_chat(self, answer, error):
+        self.chat_pending = False
+        if self.chat_entry and self.chat_entry.winfo_exists():
+            self.chat_entry.configure(state="normal")
+            self.chat_entry.focus_set()
+        if self.send_button and self.send_button.winfo_exists():
+            self.send_button.configure(state="normal", text="Send")
+        if error:
+            self._append_chat(
+                "KitKat",
+                "I can't reach my local AI model right now. Make sure Ollama is open "
+                "and the qwen2.5:1.5b model is installed.\n\nDetails: " + error
+            )
+            return
+        answer = (answer or "").strip()
+        if not answer:
+            answer = "Mrrp… I didn't get a response that time. Could you try again?"
+        self.chat_history.append({"role": "assistant", "content": answer})
+        self.chat_history = self.chat_history[-16:]
+        self._append_chat("KitKat", answer)
 
     def notify_need(self, message):
         self.show_chat()
