@@ -83,7 +83,7 @@ class KitKatPet:
         if frames:
             self.frame %= len(frames)
             image = frames[self.frame]
-            if self.animation in ("walk", "chase") and self.target and self.target[0] < self.x:
+            if self.animation in ("walk", "chase") and self.target and self.target[0] > self.x:
                 image = image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
             photo = ImageTk.PhotoImage(image)
             self.canvas.delete("all")
