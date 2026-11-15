@@ -1,0 +1,50 @@
+name: Build Kittelligence Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - kittelligence-2
+    paths:
+      - "Kittelligence2/**"
+      - "assets/**"
+      - "sounds/**"
+      - ".github/workflows/build-installer.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-installer:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Inno Setup 6
+        shell: powershell
+        run: |
+          choco install innosetup --yes --no-progress
+          Add-Content $env:GITHUB_PATH "${env:ProgramFiles(x86)}\Inno Setup 6"
+
+      - name: Build installer
+        shell: cmd
+        working-directory: Kittelligence2
+        run: |
+          py -3.12 -m venv .venv
+          .venv\Scripts\python.exe -m pip install --upgrade pip
+          .venv\Scripts\python.exe -m pip install -r requirements.txt
+          call build.bat
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kittelligence-Windows-Installer
+          path: Kittelligence2/dist/Kittelligence-Setup.exe
+          if-no-files-found: error
+          retention-days: 14
