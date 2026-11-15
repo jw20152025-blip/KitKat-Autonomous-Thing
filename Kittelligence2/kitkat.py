@@ -6,6 +6,7 @@ import tkinter as tk
 from pathlib import Path
 
 from PIL import Image, ImageTk
+from monitor_manager import MonitorManager
 
 APP_DIR = Path(__file__).resolve().parent
 BUNDLE_DIR = Path(getattr(sys, "_MEIPASS")) if hasattr(sys, "_MEIPASS") else APP_DIR.parent
@@ -43,6 +44,8 @@ class KitKatPet:
 
     def __init__(self, root):
         self.root = root
+        self.monitors = MonitorManager()
+        self.current_monitor = 0
         self.window = tk.Toplevel(root)
         self.window.overrideredirect(True)
         self.window.attributes("-topmost", True)
@@ -65,6 +68,7 @@ class KitKatPet:
         self.on_interaction = None
         self.on_menu = None
         self._meow_serial = 0
+        self._dragging = False
         self.window.bind("<ButtonPress-1>", self._drag_start)
         self.window.bind("<B1-Motion>", self._drag)
         self.window.bind("<ButtonRelease-1>", self._click)
@@ -125,14 +129,13 @@ class KitKatPet:
             return
         try:
             import winsound
-            winsound.PlaySound(
-                str(sound_path),
-                winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT
-            )
+            winsound.PlaySound(str(sound_path),
+                               winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
         except (ImportError, RuntimeError, OSError):
             pass
 
     def _drag_start(self, event):
+        self._dragging = True
         self.drag_dx, self.drag_dy = event.x, event.y
         self.target = None
         self._set_animation("idle")
@@ -143,7 +146,9 @@ class KitKatPet:
         self._place()
 
     def _click(self, _event):
-        if self.on_interaction:
+        was_dragging = self._dragging
+        self._dragging = False
+        if self.on_interaction and not was_dragging:
             self.on_interaction()
 
     def _right_click(self, event):
@@ -151,9 +156,10 @@ class KitKatPet:
             self.on_menu(event.x_root, event.y_root)
 
     def _place(self):
-        self.x = max(0, min(self.root.winfo_screenwidth() - self.SIZE, self.x))
-        self.y = max(0, min(self.root.winfo_screenheight() - self.SIZE, self.y))
-        self.window.geometry(f"+{int(self.x)}+{int(self.y)}")
+        nearest = self.monitors.clamp_to_nearest_monitor(self.x, self.y, self.SIZE, self.SIZE, 0)
+        if nearest:
+            self.current_monitor, self.x, self.y = nearest
+        self.window.geometry(f"{self.SIZE}x{self.SIZE}{int(self.x):+d}{int(self.y):+d}")
 
     def _move(self):
         if self.destroyed:
@@ -163,6 +169,7 @@ class KitKatPet:
             dx, dy = tx - self.x, ty - self.y
             distance = (dx * dx + dy * dy) ** 0.5
             if distance < 5:
+                self.x, self.y = tx, ty
                 self.target = None
                 self._set_animation("idle")
             else:
@@ -176,11 +183,14 @@ class KitKatPet:
     def wander(self):
         if self.paused:
             return
-        width, height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        self.target = (
-            random.randint(30, max(31, width - self.SIZE - 30)),
-            random.randint(30, max(31, height - self.SIZE - 30))
-        )
+        self.monitors.refresh()
+        preferred = None
+        # Most trips stay local; occasional trips deliberately explore another display.
+        if len(self.monitors.monitors) > 1 and random.random() < 0.38:
+            choices = [i for i in range(len(self.monitors.monitors)) if i != self.current_monitor]
+            preferred = random.choice(choices) if choices else None
+        _monitor, position = self.monitors.choose_position(self.SIZE, self.SIZE, preferred=preferred)
+        self.target = position
         self._set_animation("walk")
 
     def sleep(self):
