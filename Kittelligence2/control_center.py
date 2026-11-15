@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import queue
 import threading
 import tkinter as tk
 from tkinter import ttk, scrolledtext
@@ -20,7 +21,11 @@ class ControlCenter:
         self.greeted = False
         self.chat_pending = False
         self.chat_history = []
+        self.chat_results = queue.Queue()
         self.ai = KitKatAI()
+        # Tkinter UI updates must run on the main thread. Poll the result queue
+        # from the main event loop instead of calling root.after() in a worker.
+        self.root.after(100, self._poll_chat_results)
 
     def show(self):
         if self.window and self.window.winfo_exists():
@@ -213,12 +218,26 @@ class ControlCenter:
             except Exception as exc:
                 answer = None
                 error = str(exc)
-            try:
-                self.root.after(0, lambda: self._finish_chat(answer, error))
-            except tk.TclError:
-                pass
+            self.chat_results.put((answer, error))
 
         threading.Thread(target=worker, daemon=True, name="KitKatAIRequest").start()
+
+    def _poll_chat_results(self):
+        """Deliver completed model responses safely on Tkinter's main thread."""
+        try:
+            while True:
+                answer, error = self.chat_results.get_nowait()
+                self._finish_chat(answer, error)
+        except queue.Empty:
+            pass
+        except tk.TclError:
+            return
+
+        try:
+            if self.root.winfo_exists():
+                self.root.after(100, self._poll_chat_results)
+        except tk.TclError:
+            pass
 
     def _finish_chat(self, answer, error):
         self.chat_pending = False
