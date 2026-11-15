@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+import sys
 import tkinter as tk
 from pathlib import Path
 from PIL import Image, ImageTk
@@ -59,7 +60,6 @@ class KitKatPet:
                         except OSError:
                             continue
             result[name] = frames
-        # Existing project also has a single-image tray asset; use it as a graceful fallback.
         fallback = ASSET_DIR / "idle" / "kitkat.png"
         if not result["idle"] and fallback.exists():
             try:
