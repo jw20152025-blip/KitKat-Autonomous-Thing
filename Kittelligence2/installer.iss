@@ -1,12 +1,14 @@
-; Inno Setup 6 script for Kittelligence 2.2
+; Inno Setup 6 script for Kittelligence 2.4
 #define AppName "Kittelligence"
-#define AppVersion "2.2.0"
+#define AppVersion "2.4.0"
 #define AppPublisher "anyonomous studios"
 
 [Setup]
 AppId={{A92A71C8-3B42-4B70-AB44-9D1B2D2E2100}
 AppName={#AppName}
 AppVersion={#AppVersion}
+VersionInfoVersion=2.4.0.0
+VersionInfoProductVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 DefaultDirName={autopf}\Kittelligence
 DefaultGroupName={#AppName}

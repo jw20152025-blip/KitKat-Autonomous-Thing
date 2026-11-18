@@ -153,8 +153,8 @@ class ControlCenter:
             ("Clean litter", self.brain.clean_litter),
             ("Brush", self.brain.brush),
             ("Pet", self.brain.on_petted),
-            ("Meow", self.pet.meow),
-            ("Purr", self.pet.purr),
+            ("Meow", self.brain.manual_meow),
+            ("Purr", self.brain.manual_purr),
             ("Chat with KitKat", self.show_chat),
         ]
         for index, (label, command) in enumerate(buttons):
@@ -173,6 +173,12 @@ class ControlCenter:
         self.last_action.pack(anchor="w")
         self.pet_count = ttk.Label(status, text="Pets: 0")
         self.pet_count.pack(anchor="w", pady=(4, 0))
+        self.satisfaction_label = ttk.Label(status, text="Last action satisfaction: 50%")
+        self.satisfaction_label.pack(anchor="w", pady=(4, 0))
+        self.learning_label = ttk.Label(status, text="Neural learning: 0 experiences")
+        self.learning_label.pack(anchor="w", pady=(4, 0))
+        self.monitor_label = ttk.Label(status, text="Displays detected: 1")
+        self.monitor_label.pack(anchor="w", pady=(4, 0))
         self.pause_button = ttk.Button(status, text="Pause autonomy", command=self._toggle_pause)
         self.pause_button.pack(fill="x", pady=(8, 0))
 
@@ -203,6 +209,15 @@ class ControlCenter:
             self.values[key].configure(text=f"{percent}%")
         self.last_action.configure(text=f"Last activity: {self.brain.last_action}")
         self.pet_count.configure(text=f"Pets: {self.brain.total_pets}")
+        self.satisfaction_label.configure(
+            text=f"Last action satisfaction: {self.brain.last_satisfaction:.1f}%"
+        )
+        self.learning_label.configure(
+            text=f"Neural learning: {self.brain.network.training_steps:,} experiences"
+        )
+        self.monitor_label.configure(
+            text=f"Displays detected: {len(self.pet.monitors.monitors)}"
+        )
         self.window.after(700, self._refresh)
 
     def show_chat(self):
@@ -279,6 +294,10 @@ class ControlCenter:
             f"Litter cleanliness: {b.litter_cleanliness:.0%}\n"
             f"Last activity: {b.last_action}\n"
             f"Total pets: {b.total_pets}\n"
+            f"Last action satisfaction score: {b.last_satisfaction:.1f}%\n"
+            f"Learned experiences: {b.network.training_steps}\n"
+            f"Neural architecture: six hidden layers, widths {b.network.WIDTHS}\n"
+            f"Connected displays: {len(self.pet.monitors.monitors)}\n"
         )
 
     def send_chat(self):
